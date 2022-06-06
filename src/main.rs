@@ -19,33 +19,23 @@ fn start_server() {
 
 fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
-
     stream.read(&mut buffer).unwrap();
-    // println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
 
     let get = b"GET / HTTP/1.1\r\n";
-    if buffer.starts_with(get) {
-        send_index(&mut stream);
+    let (status, filename) = if buffer.starts_with(get) {
+        ("HTTP/1.1 200 OK", "index.html")
     } else {
-        send_404(&mut stream);
-    }
+        ("HTTP/1.1 404 NOT FOUND", "404.html")
+    };
+
+    send_page(&mut stream, status, filename);
 }
 
-fn send_index(stream: &mut TcpStream) {
-    let contents = fs::read_to_string("index.html").unwrap();
+fn send_page(stream: &mut TcpStream, status: &str, filename: &str) {
+    let contents = fs::read_to_string(filename).unwrap();
     let response = format!(
-        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
-        contents.len(),
-        contents
-    );
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
-}
-
-fn send_404(stream: &mut TcpStream) {
-    let contents = fs::read_to_string("404.html").unwrap();
-    let response = format!(
-        "HTTP/1.1 404 NOT FOUND\r\nContent-Length: {}\r\n\r\n{}",
+        "{}\r\nContent-Length: {}\r\n\r\n{}",
+        status,
         contents.len(),
         contents
     );
